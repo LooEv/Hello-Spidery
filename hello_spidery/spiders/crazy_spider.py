@@ -1,3 +1,15 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+@File    : crazy_spider.py
+@Author  : qloo
+@Version : v1.0
+@Time    : 2019-04-01 11:41:22
+@History :
+@Desc    :
+"""
+
 import attr
 
 from scrapy.loader import ItemLoader

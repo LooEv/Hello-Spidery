@@ -35,7 +35,7 @@ RETRY_TIMES = 2
 #CONCURRENT_REQUESTS_PER_IP = 16
 
 # Disable cookies (enabled by default)
-#COOKIES_ENABLED = False
+COOKIES_ENABLED = False
 
 # Disable Telnet Console (enabled by default)
 #TELNETCONSOLE_ENABLED = False
@@ -51,24 +51,25 @@ RETRY_TIMES = 2
 SPIDER_MIDDLEWARES = {
 }
 
-KEYWORD_FILTER = [
-    {
-        'keyword': 'test',
-        'check_method': 0,
-        'check_scope': 0,
-        'allow': False,
-        'change_proxy': True,
-    },
-]
+# KEYWORD_FILTER = [
+#     {
+#         'keyword': 'test',
+#         'check_method': 0,
+#         'check_scope': 0,
+#         'allow': False,
+#         'change_proxy': True,
+#     },
+# ]
 
 # Enable or disable downloader middlewares
 # See https://doc.scrapy.org/en/latest/topics/downloader-middleware.html
 DOWNLOADER_MIDDLEWARES = {
     'scrapy.downloadermiddlewares.useragent.UserAgentMiddleware': None,
     'hello_spidery.downloadermiddlewares.default_error_back.DefaultErrorBack': 1,
-    'hello_spidery.downloadermiddlewares.keyword_filter.KeywordFilterMiddleware': 520,
-    'hello_spidery.downloadermiddlewares.useragent.CustomUserAgentMiddleware': 567,
+    'hello_spidery.downloadermiddlewares.useragent.CustomUserAgentMiddleware': 500,
     'hello_spidery.downloadermiddlewares.add_cookie.GiveSomeCookies': 580,
+    # must before RedirectMiddleware and after HttpCompressionMiddleware
+    'hello_spidery.downloadermiddlewares.keyword_filter.KeywordFilterMiddleware': 585,
 }
 
 # Enable or disable extensions

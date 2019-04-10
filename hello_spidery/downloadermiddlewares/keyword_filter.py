@@ -93,6 +93,9 @@ class KeywordFilterMiddleware(RetryMiddleware):
         if is_filter:
             result = self._retry(request, reason[:-4], spider)
             if isinstance(result, Request):
+                redirect_urls = request.meta.get('redirect_urls', [])
+                if redirect_urls:
+                    result = result.replace(url=redirect_urls[0])
                 result.meta['change_proxy'] = change_proxy
                 return result
         return response
