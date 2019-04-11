@@ -9,16 +9,19 @@
 @History :
 @Desc    : 
 """
+
 import copy
-import re
+import json
 import time
 
-from scrapy.spiders import Spider
 from scrapy.http import Request, FormRequest
+from scrapy.selector import Selector
+from scrapy.spiders import Spider
 
 from hello_spidery.items.parse_item import ParsedItem
 from hello_spidery.downloadermiddlewares.keyword_filter import KeywordCheckScopeEnum, \
     KeywordCheckMethodEnum
+from hello_spidery.utils.dianping_css_crack import DianPingCssCracker
 
 
 class DianPingShop(Spider):
@@ -40,6 +43,8 @@ class DianPingShop(Spider):
         # ]
     }
 
+    dp_cracker = DianPingCssCracker()
+
     header_home = {
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
         'Accept-Encoding': 'gzip, deflate, br',
@@ -60,9 +65,6 @@ class DianPingShop(Spider):
         'Referer': 'https://m.dianping.com/chengdu/ch10/d1?from=m_nav_1_meishi'
     }
 
-    css_font_mapping_dict = {}
-    svg_url_match = re.compile(r'url\(//(.+?svgtextcss/.+?\.svg)')
-
     cookie_dict = {
         'PHOENIX_ID': '0a492559-16a05472dbd-2a942c5',
         '_hc.v': '99569c40-c179-176f-e8fa-85bda8642a7e.1554860870',
@@ -74,7 +76,7 @@ class DianPingShop(Spider):
         'default_ab': 'citylist%3AA%3A1%7Cshop%3AA%3A1%7Cindex%3AA%3A1%7CshopList%3AA%3A1',
         'dp_pwa_v_': '1672865b011de2e1f16a640b5af838452230dcb0',
         'logan_custom_report': '',
-        'logan_session_token': 'gq9g0zrlrxmys5rypb2p',
+        # 'logan_session_token': 'gq9g0zrlrxmys5rypb2p',
         'lxsdk_cuid': '16a04ee0a50c8-0246bb646bbc4-71236530-5717a-16a04ee0a51c8',
         'm_flash2': '1',
         'source': 'm_browser_test_22',
@@ -101,29 +103,17 @@ class DianPingShop(Spider):
         if 'verify.meituan.com' in response.url:
             return self.update_cookies()
 
-        css_url = response.xpath('//link[contains(@href, "svgtextcss")]/@href').extract_first()
-        css_url = response.urljoin(css_url)
-        yield Request(css_url, callback=self.get_svg_url, dont_filter=True)
-
-    def get_svg_url(self, response):
-        try:
-            for svg_url in self.svg_url_match.findall(response.text):
-                print(svg_url)
-        except Exception:
-            self.logger.exception('fail to get svg url: ')
+        new_html = self.dp_cracker.crack(response.text)
+        slt = Selector(text=new_html)
+        print(''.join(slt.xpath('//text()').extract))
 
     def update_cookies(self):
         # return Request()
         pass
 
-    def parse_css(self, response):
-        pass
-
-
-# post_data = '{"pageEnName":"shopList","moduleInfoList":[{"moduleName":"mapiSearch","query":{"search":{"start":20,"categoryId":"10","parentCategoryId":10,"locateCityid":0,"limit":20,"sortId":"0","cityId":8,"range":"-1","maptype":0,"keyword":""}}}]}'
-# resp = s.post('https://m.dianping.com/isoapi/module', data=post_data, headers=header_dict)
-#
-# for item in resp.json()['data']['moduleInfoList'][0]['moduleData']['data']['listData']['list']:
-#     shop_id = item['shopId']
-#     detail_resp = s.get(f'https://m.dianping.com/shop/{shop_id}', headers=header_home)
-#     break
+    def parse_list(self, response):
+        url = 'https://m.dianping.com/isoapi/module'
+        data_dict = json.loads(response.text)
+        for item in data_dict.json()['data']['moduleInfoList'][0]['moduleData']['data']['listData']['list']:
+            shop_id = item['shopId']
+            # detail_resp = s.get(f'https://m.dianping.com/shop/{shop_id}', headers=header_home)
