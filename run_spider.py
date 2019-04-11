@@ -7,5 +7,4 @@ from hello_spidery.spiders.dianping import DianPingShop
 process = CrawlerProcess(get_project_settings())
 
 process.crawl(DianPingShop)
-# process.crawl(GithubSpider)
 process.start()
