@@ -9,35 +9,101 @@
 @History :
 @Desc    : 
 """
+
 import copy
 import json
+import re
 import time
+from urllib.parse import urlparse
 
 from scrapy.http import Request, FormRequest
 from scrapy.selector import Selector
-from scrapy.spiders import Spider
+from scrapy.spiders import CrawlSpider, Rule
+from scrapy.linkextractors import LinkExtractor
 
 from hello_spidery.items.parse_item import ParsedItem
-from hello_spidery.downloadermiddlewares.keyword_filter import KeywordCheckScopeEnum, \
-    KeywordCheckMethodEnum
-from hello_spidery.utils.dianping_css_crack import DianPingCssCracker
+from hello_spidery.utils.selector_utils import xpath_extract_all_text
 
 
-class MobilePhoneCaptcha(Spider):
+class MobilePhoneCaptcha(CrawlSpider):
     name = 'mobile_phone_captcha'
 
     custom_settings = {
         'USE_DEFAULT_ERROR_BACK': True,
+        'DOWNLOAD_DELAY': 1,
     }
 
     start_urls = [
-        'https://www.pdflibr.com/',
+        'https://www.pdflibr.com/?page=1',
         'https://yunduanxin.net/China-Phone-Number/',
-        'http://www.smszk.com/',
-        'http://www.z-sms.com/',
-        'https://www.becmd.com/',
-        'https://www.receivingsms.com/'
+        # 'http://www.smszk.com/',
+        # 'http://www.z-sms.com/',
+        # 'https://www.becmd.com/',
+        # 'https://www.receivingsms.com/'
     ]
 
-    def parse(self, response):
-        pass
+    phone_number_and_url_mapping = {}
+
+    phone_num_match = re.compile(r'\d{11,}')
+
+    list_page_xpaths = {
+        'www.pdflibr.com': {
+            'phone_number': '//div[contains(@class, "number-list-flag")]//h3',
+            'a_tag': '//div[contains(@class, "sms-number-read")]//a/@href'
+        },
+        'yunduanxin.net': {
+            'phone_number_and_url': '//a[text()="接收短信"]/@href'
+        }
+    }
+
+    detail_page_xpaths = {
+        'www.pdflibr.com': {
+            'table': '(//table[@class="table table-hover"])[last()]//td',
+        }
+    }
+
+    rules = (
+        Rule(LinkExtractor(allow=r'www\.pdflibr\.com/\?page=\d+', allow_domains='www.pdflibr.com'),
+             callback='parse_list', follow=True),
+        Rule(LinkExtractor(allow=r'/SMSContent/\d+'), callback='parse_detail'),
+
+        Rule(LinkExtractor(allow=r'yunduanxin\.net/China-Phone-Number/', allow_domains='yunduanxin.net'),
+             callback='parse_list', follow=True),
+    )
+
+    def get_ph_num(self, ph_num_text):
+        _ph_num = self.phone_num_match.search(ph_num_text)
+        if not _ph_num:
+            return
+        _ph_num = _ph_num.group()[-11:]
+        return _ph_num
+
+    def parse_list(self, response):
+        host_name = urlparse(response.url).hostname
+        xpaths_dict = self.list_page_xpaths.get(host_name, {})
+        if not xpaths_dict:
+            return
+
+        if 'phone_number_and_url' in xpaths_dict:
+            href_list = [mbr for mbr in response.xpath(xpaths_dict['phone_number_and_url']).extract()]
+            phone_number_list = href_list[:]
+        else:
+            phone_number_selectors = response.xpath(xpaths_dict['phone_number'])
+            phone_number_list = [xpath_extract_all_text(mbr) for mbr in phone_number_selectors]
+            href_list = [mbr for mbr in response.xpath(xpaths_dict['a_tag']).extract()]
+
+        for ph_num, href in zip(phone_number_list, href_list):
+            _ph_num = self.get_ph_num(ph_num)
+            if not _ph_num:
+                continue
+            url = response.urljoin(href)
+            self.phone_number_and_url_mapping[_ph_num] = url
+
+    def parse_detail(self, response):
+        host_name = urlparse(response.url).hostname
+        xpaths_dict = self.detail_page_xpaths.get(host_name, {})
+        if not xpaths_dict:
+            return
+        #
+        # for td in response.xpath(xpaths_dict['table']):
+        #     print(xpath_extract_all_text(td))
