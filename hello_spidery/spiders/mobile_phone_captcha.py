@@ -35,7 +35,7 @@ class MobilePhoneCaptcha(CrawlSpider):
 
     start_urls = [
         'https://www.pdflibr.com/?page=1',
-        'https://yunduanxin.net/China-Phone-Number/',
+        # 'https://yunduanxin.net/China-Phone-Number/',
         # 'http://www.smszk.com/',
         # 'http://www.z-sms.com/',
         # 'https://www.becmd.com/',
@@ -56,19 +56,20 @@ class MobilePhoneCaptcha(CrawlSpider):
         }
     }
 
-    detail_page_xpaths = {
-        'www.pdflibr.com': {
-            'table': '(//table[@class="table table-hover"])[last()]//td',
-        }
+    parse_detail_page_method = {
+        'www.pdflibr.com': 'parse_pdflibr',
+        'yunduanxin.net': 'parse_yunduanxin',
     }
 
     rules = (
         Rule(LinkExtractor(allow=r'www\.pdflibr\.com/\?page=\d+', allow_domains='www.pdflibr.com'),
              callback='parse_list', follow=True),
-        Rule(LinkExtractor(allow=r'/SMSContent/\d+'), callback='parse_detail'),
+        Rule(LinkExtractor(allow=r'/SMSContent/\d+$'), callback='parse_detail', follow=True),
+        Rule(LinkExtractor(allow=r'/SMSContent/\d+\?page=[2]$'), callback='parse_detail'),
 
         Rule(LinkExtractor(allow=r'yunduanxin\.net/China-Phone-Number/', allow_domains='yunduanxin.net'),
-             callback='parse_list', follow=True),
+             callback='parse_list', follow=True, process_links='process_url'),
+        Rule(LinkExtractor(allow=r'/info/\d+/'), callback='parse_detail'),
     )
 
     def get_ph_num(self, ph_num_text):
@@ -101,9 +102,25 @@ class MobilePhoneCaptcha(CrawlSpider):
 
     def parse_detail(self, response):
         host_name = urlparse(response.url).hostname
-        xpaths_dict = self.detail_page_xpaths.get(host_name, {})
-        if not xpaths_dict:
+        parse_method_name = self.parse_detail_page_method.get(host_name)
+        if not parse_method_name:
+            self.logger.warn(f'wrong url request {response.url}')
             return
-        #
-        # for td in response.xpath(xpaths_dict['table']):
-        #     print(xpath_extract_all_text(td))
+
+        parse_method = getattr(self, parse_method_name, None)
+        if callable(parse_method):
+            for item in parse_method(response):
+                yield item
+
+    def parse_pdflibr(self, response):
+        table = response.xpath('(//table[@class="table table-hover"])[last()]')
+        table_headers = [xpath_extract_all_text(th) for th in table.xpath('.//th')]
+        for tr in table.xpath('tbody//tr'):
+            values = [xpath_extract_all_text(td) for td in tr.xpath('.//td')]
+            print(dict(zip(table_headers[1:], values[1:])))
+        yield
+
+    def parse_yunduanxin(self, response):
+        item_xpath = '//div[contains(@class, "row border-bottom table-hover")]'
+        for div in response.xpath(item_xpath):
+            values = [xpath_extract_all_text(_div) for _div in div.xpath('./div')]
