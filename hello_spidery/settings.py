@@ -61,6 +61,31 @@ SPIDER_MIDDLEWARES = {
 #     },
 # ]
 
+FIELDS_JSON_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "_id": {"type": "string"},
+        "update_time": {"type": "number"},
+        "do_time": {"type": "string"},
+        "version": {"type": "string"},
+        "_parsed_data": {"type": "object"},
+        "_dup_str": {"type": "string"},
+
+        "_html": {"type": "string"},
+        "_request_url": {"type": "string"},
+        "_request_method": {"type": "string"},
+        "_request_params": {"type": "string"},
+        "_job_id": {"type": "integer"},
+        "_parent_job_id": {"type": "integer"},
+    },
+    "required": [
+        "_id", "update_time", "do_time", "version", '_parsed_data',
+        "_html", "_request_url", "_request_method", "_request_params"
+    ],
+    "additionalProperties": False,
+}
+
+
 # Enable or disable downloader middlewares
 # See https://doc.scrapy.org/en/latest/topics/downloader-middleware.html
 DOWNLOADER_MIDDLEWARES = {
@@ -81,8 +106,11 @@ DOWNLOADER_MIDDLEWARES = {
 # Configure item pipelines
 # See https://doc.scrapy.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
-   # 'hello_spidery.pipelines.mongo_pipeline.MongoPipeline': 800,
-   'hello_spidery.pipelines.parsed_data_pipeline.ParsedDataPipeline': 300,
+    # 'hello_spidery.pipelines.mongo_pipeline.MongoPipeline': 800,
+    # 'hello_spidery.pipelines.duplicates_pipeline.DuplicatesPipeline': 300,
+    # 'hello_spidery.pipelines.field_checker.FieldCheckerPipeline': 400,
+    'hello_spidery.pipelines.sqlite_pipeline.SqlitePipeline': 500,
+    'hello_spidery.pipelines.parsed_data_pipeline.ParsedDataPipeline': 600,
 }
 
 # Enable and configure the AutoThrottle extension (disabled by default)

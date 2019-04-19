@@ -20,6 +20,7 @@ from hello_spidery.items.parse_item import ParsedItem
 from hello_spidery.downloadermiddlewares.keyword_filter import KeywordCheckScopeEnum, \
     KeywordCheckMethodEnum
 
+
 @attr.s
 class Cookie:
     host = attr.ib()
@@ -56,16 +57,20 @@ class CrazySpider(Spider):
 
     def start_requests(self):
         # yield Request('http://httpbin.org/status/500', dont_filter=True, callback=self.parse)
-        yield Request('http://httpbin.org/headers', dont_filter=True, callback=self.parse)
-
-    def parse(self, response):
-        print(response.text)
-        yield Request('http://httpbin.org/cookies', callback=self.parse_header, meta={'inject_cookie_by_mw': True})
+        yield Request('http://httpbin.org/headers', dont_filter=True, callback=self.parse_header)
+        yield Request('http://httpbin.org/headers', dont_filter=True, callback=self.parse_header)
         yield Request('http://httpbin.org/cookies', callback=self.parse_header, dont_filter=True)
+
+    # def parse(self, response):
+    #     print(response.text)
+    #     yield Request('http://httpbin.org/cookies', callback=self.parse_header, meta={'inject_cookie_by_mw': True})
+    #     yield Request('http://httpbin.org/cookies', callback=self.parse_header, dont_filter=True)
 
     def parse_header(self, response):
         self.logger.info(response.text)
         # title = response.xpath('//title').extract()[0]
         item = ParsedItem()
         item['version'] = 'abc'
+        item['_id'] = 'dfd'
+        item['_dup_str'] = response.url
         yield item

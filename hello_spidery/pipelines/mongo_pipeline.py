@@ -12,9 +12,10 @@
 
 import pymongo
 
+from contextlib import suppress
 
-class MongoPipeline(object):
-    collection_name = 'scrapy_items'
+
+class MongoPipeline:
 
     def __init__(self, mongo_uri, mongo_db):
         self.mongo_uri = mongo_uri
@@ -32,8 +33,9 @@ class MongoPipeline(object):
         self.db = self.client[self.mongo_db]
 
     def close_spider(self, spider):
-        self.client.close()
+        with suppress(AttributeError):
+            self.client.close()
 
     def process_item(self, item, spider):
-        self.db[self.collection_name].insert_one(dict(item))
+        self.db[spider.name].insert_one(dict(item))
         return item
