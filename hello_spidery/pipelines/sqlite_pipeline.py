@@ -18,37 +18,43 @@ from pathlib import Path
 
 class SqlitePipeline:
 
-    def __init__(self, database, timeout):
-        self.database = database
+    def __init__(self, database, timeout, create_db_sql, insert_sql):
+        default_database = (Path(__file__).parent.parent / 'data' / 'spider_data.sqlite').absolute()
+        self.database = database or str(default_database)
         self.timeout = timeout
-        self.conn = None
-        self.cursor = None
+        assert create_db_sql is not None and insert_sql is not None
+        self.create_db_sql = create_db_sql
+        self.insert_sql = insert_sql
 
     @classmethod
     def from_crawler(cls, crawler):
         settings = crawler.settings
-        default_database = (Path(__file__).parent.parent / 'data' / 'spider_data.db').absolute()
         return cls(
-            database=settings.get('SQLITE_DATABASE', str(default_database)),
-            timeout=settings.get('SQLITE_CONN_TIMEOUT', 10)
+            database=settings.get('SQLITE_DATABASE'),
+            timeout=settings.get('SQLITE_CONN_TIMEOUT', 10),
+            create_db_sql=settings.get('CREATE_TABLE_SQL_4_SQLITE'),
+            insert_sql=settings.get('INSERT_SQL_4_SQLITE')
         )
 
     def open_spider(self, spider):
         self.conn = sqlite3.connect(self.database, timeout=self.timeout)
         self.cursor = self.conn.cursor()
-        self.cursor.execute('''CREATE TABLE IF NOT EXISTS spider_data
-               (`ID` integer primary key AUTOINCREMENT,
-               `FROM`          varchar (100)   NOT NULL,
-               `DATE`          varchar (50)    NOT NULL,
-               `MESSAGE`       TEXT NOT NULL);''')
+        self.cursor.execute(self.create_db_sql)
 
     def close_spider(self, spider):
         with suppress(AttributeError):
             self.conn.close()
 
     def process_item(self, item, spider):
-        parsed_data = item['_parsed_data']
-        save_data = parsed_data['电话号码'], parsed_data['发送日期'], parsed_data['短信内容']
-        self.cursor.execute("INSERT INTO spider_data (`FROM`,`DATE`,MESSAGE) VALUES (?,?,?)", save_data)
-        self.conn.commit()
+        save_data_list = []
+        for mbr in item['data']:
+            parsed_data = mbr['_parsed_data']
+            save_data_list.append((parsed_data['电话号码'], parsed_data['发送日期'], parsed_data['短信内容']))
+            if len(save_data_list) > 60:
+                self.cursor.executemany(self.insert_sql, save_data_list)
+                self.conn.commit()
+                save_data_list.clear()
+        if save_data_list:
+            self.cursor.executemany(self.insert_sql, save_data_list)
+            self.conn.commit()
         return item

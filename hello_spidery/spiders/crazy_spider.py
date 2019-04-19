@@ -16,7 +16,7 @@ from scrapy.loader import ItemLoader
 from scrapy.spiders import Spider, CrawlSpider
 from scrapy.http import Request, FormRequest
 
-from hello_spidery.items.parse_item import ParsedItem
+from hello_spidery.items.parsed_item import ParsedItem
 from hello_spidery.downloadermiddlewares.keyword_filter import KeywordCheckScopeEnum, \
     KeywordCheckMethodEnum
 

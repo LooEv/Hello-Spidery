@@ -49,6 +49,7 @@ COOKIES_ENABLED = False
 # Enable or disable spider downloadermiddlewares
 # See https://doc.scrapy.org/en/latest/topics/spider-middleware.html
 SPIDER_MIDDLEWARES = {
+    'hello_spidery.spidermiddlewares.multi_parsed_item_assemble.MultiParsedItemAssemblerMiddleware': 900,
 }
 
 # KEYWORD_FILTER = [
@@ -107,7 +108,7 @@ DOWNLOADER_MIDDLEWARES = {
 # See https://doc.scrapy.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
     # 'hello_spidery.pipelines.mongo_pipeline.MongoPipeline': 800,
-    # 'hello_spidery.pipelines.duplicates_pipeline.DuplicatesPipeline': 300,
+    'hello_spidery.pipelines.duplicates_pipeline.DuplicatesPipeline': 300,
     # 'hello_spidery.pipelines.field_checker.FieldCheckerPipeline': 400,
     'hello_spidery.pipelines.sqlite_pipeline.SqlitePipeline': 500,
     'hello_spidery.pipelines.parsed_data_pipeline.ParsedDataPipeline': 600,
@@ -133,3 +134,13 @@ ITEM_PIPELINES = {
 #HTTPCACHE_DIR = 'httpcache'
 #HTTPCACHE_IGNORE_HTTP_CODES = []
 #HTTPCACHE_STORAGE = 'scrapy.extensions.httpcache.FilesystemCacheStorage'
+
+
+############ DATABASE #################
+SQLITE_DATABASE = ''
+CREATE_TABLE_SQL_4_SQLITE = """CREATE TABLE IF NOT EXISTS spider_data
+                                   (`id` integer primary key AUTOINCREMENT,
+                                   `from`          varchar (100)   NOT NULL,
+                                   `date`          varchar (50)    NOT NULL,
+                                   `message`       TEXT NOT NULL);"""
+INSERT_SQL_4_SQLITE = """INSERT INTO spider_data (`from`,`date`,message) VALUES (?,?,?)"""

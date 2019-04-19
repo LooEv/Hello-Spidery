@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@File    : parse_item.py
+@File    : parsed_item.py
 @Author  : qloo
 @Version : v1.0
 @Time    : 2019-03-28 22:06:50

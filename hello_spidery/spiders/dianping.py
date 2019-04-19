@@ -18,7 +18,7 @@ from scrapy.http import Request, FormRequest
 from scrapy.selector import Selector
 from scrapy.spiders import Spider
 
-from hello_spidery.items.parse_item import ParsedItem
+from hello_spidery.items.parsed_item import ParsedItem
 from hello_spidery.downloadermiddlewares.keyword_filter import KeywordCheckScopeEnum, \
     KeywordCheckMethodEnum
 from hello_spidery.utils.dianping_css_crack import DianPingCssCracker

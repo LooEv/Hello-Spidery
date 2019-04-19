@@ -21,8 +21,9 @@ from scrapy.selector import Selector
 from scrapy.spiders import CrawlSpider, Rule
 from scrapy.linkextractors import LinkExtractor
 
-from hello_spidery.items.parse_item import ParsedItem
-from hello_spidery.utils.selector_utils import xpath_extract_all_text
+from hello_spidery.items.parsed_item import ParsedItem
+from hello_spidery.utils.selector_utils import xpath_extract_all_text_strip, \
+    xpath_extract_all_text_no_spaces as xpath_text_no_spaces
 
 
 class MobilePhoneCaptcha(CrawlSpider):
@@ -90,7 +91,7 @@ class MobilePhoneCaptcha(CrawlSpider):
             phone_number_list = href_list[:]
         else:
             phone_number_selectors = response.xpath(xpaths_dict['phone_number'])
-            phone_number_list = [xpath_extract_all_text(mbr) for mbr in phone_number_selectors]
+            phone_number_list = [xpath_extract_all_text_strip(mbr) for mbr in phone_number_selectors]
             href_list = [mbr for mbr in response.xpath(xpaths_dict['a_tag']).extract()]
 
         for ph_num, href in zip(phone_number_list, href_list):
@@ -114,9 +115,9 @@ class MobilePhoneCaptcha(CrawlSpider):
 
     def parse_pdflibr(self, response):
         table = response.xpath('(//table[@class="table table-hover"])[last()]')
-        table_headers = [xpath_extract_all_text(th) for th in table.xpath('.//th')]
+        table_headers = [xpath_text_no_spaces(th) for th in table.xpath('.//th')]
         for tr in table.xpath('tbody//tr'):
-            values = [xpath_extract_all_text(td) for td in tr.xpath('.//td')]
+            values = [xpath_extract_all_text_strip(td) for td in tr.xpath('.//td')]
             print(dict(zip(table_headers[1:], values[1:])))
         yield
 
@@ -125,7 +126,7 @@ class MobilePhoneCaptcha(CrawlSpider):
         headers = ['电话号码', '发送日期', '短信内容']
         for div in response.xpath(item_xpath):
             item = ParsedItem()
-            values = [xpath_extract_all_text(_div) for _div in div.xpath('./div')]
+            values = [xpath_extract_all_text_strip(_div) for _div in div.xpath('./div')]
             from_where = values[0]
             values[0] = from_where[:from_where.find('From')].strip()
             item['_parsed_data'] = dict(zip(headers, values))
