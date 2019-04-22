@@ -10,25 +10,22 @@
 @Desc    : 
 """
 
-import copy
-import json
 import re
 import time
 from collections import OrderedDict
 from urllib.parse import urlparse
 
 from scrapy.http import Request, FormRequest
-from scrapy.selector import Selector
-from scrapy.spiders import CrawlSpider, Rule
+from scrapy.spiders import Rule
 from scrapy.linkextractors import LinkExtractor
 
-from hello_spidery.items.parsed_item import ParsedItem
 from hello_spidery.utils.commons import str_2_seconds, map_fields
+from hello_spidery.utils.spiders.crawl_spider import HelloCrawlSpider
 from hello_spidery.utils.selector_utils import xpath_extract_all_text_strip, \
     xpath_extract_all_text_no_spaces as xpath_text_no_spaces
 
 
-class MobilePhoneCaptcha(CrawlSpider):
+class MobilePhoneCaptcha(HelloCrawlSpider):
     name = 'mobile_phone_captcha'
 
     custom_settings = {
@@ -47,8 +44,8 @@ class MobilePhoneCaptcha(CrawlSpider):
     }
 
     start_urls = [
-        'https://www.pdflibr.com/?page=1',
-        # 'https://yunduanxin.net/China-Phone-Number/',
+        # 'https://www.pdflibr.com/?page=1',
+        'https://yunduanxin.net/China-Phone-Number/',
         # 'http://www.smszk.com/',
         # 'http://www.z-sms.com/',
         # 'https://www.becmd.com/',
@@ -139,7 +136,7 @@ class MobilePhoneCaptcha(CrawlSpider):
         mobile_phone_number = self.url_and_phone_number_mapping[response.url]
         for tr in table.xpath('tbody//tr'):
             try:
-                item = ParsedItem()
+                item = self.assemble_parsed_item(response)
                 values = [xpath_extract_all_text_strip(td) for td in tr.xpath('.//td')]
                 a_dict = dict(zip(table_headers[1:], values[1:]))
                 a_dict['mobile_phone_number'] = mobile_phone_number
@@ -155,7 +152,7 @@ class MobilePhoneCaptcha(CrawlSpider):
         mobile_phone_number = self.url_and_phone_number_mapping[response.url]
         for div in response.xpath(item_xpath):
             try:
-                item = ParsedItem()
+                item = self.assemble_parsed_item(response)
                 values = [xpath_extract_all_text_strip(_div) for _div in div.xpath('./div')]
                 from_where = values[0]
                 values[0] = from_where[:from_where.find('From')].strip()
