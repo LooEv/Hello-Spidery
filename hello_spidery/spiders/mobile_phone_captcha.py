@@ -14,6 +14,7 @@ import copy
 import json
 import re
 import time
+from collections import OrderedDict
 from urllib.parse import urlparse
 
 from scrapy.http import Request, FormRequest
@@ -22,6 +23,7 @@ from scrapy.spiders import CrawlSpider, Rule
 from scrapy.linkextractors import LinkExtractor
 
 from hello_spidery.items.parsed_item import ParsedItem
+from hello_spidery.utils.commons import str_2_seconds, map_fields
 from hello_spidery.utils.selector_utils import xpath_extract_all_text_strip, \
     xpath_extract_all_text_no_spaces as xpath_text_no_spaces
 
@@ -32,18 +34,28 @@ class MobilePhoneCaptcha(CrawlSpider):
     custom_settings = {
         'USE_DEFAULT_ERROR_BACK': True,
         'DOWNLOAD_DELAY': 1,
+
+        # DATABASE
+        'SQLITE_DATABASE': '',
+        'CREATE_TABLE_SQL_4_SQLITE': """CREATE TABLE IF NOT EXISTS spider_data
+                                        (`mobile_phone_number`  char(11)   NOT NULL,
+                                         `message`              varchar(200) NOT NULL,
+                                         `sender`               char(30)    NOT NULL,
+                                         `send_time`            varchar(19) NOT NULL,
+                                         `timestamp`            integer   NOT NULL);""",
+        'INSERT_SQL_4_SQLITE': """INSERT INTO spider_data VALUES (?,?,?,?,?)"""
     }
 
     start_urls = [
-        # 'https://www.pdflibr.com/?page=1',
-        'https://yunduanxin.net/China-Phone-Number/',
+        'https://www.pdflibr.com/?page=1',
+        # 'https://yunduanxin.net/China-Phone-Number/',
         # 'http://www.smszk.com/',
         # 'http://www.z-sms.com/',
         # 'https://www.becmd.com/',
         # 'https://www.receivingsms.com/'
     ]
 
-    phone_number_and_url_mapping = {}
+    url_and_phone_number_mapping = {}
 
     phone_num_match = re.compile(r'\d{11,}')
 
@@ -61,6 +73,14 @@ class MobilePhoneCaptcha(CrawlSpider):
         'www.pdflibr.com': 'parse_pdflibr',
         'yunduanxin.net': 'parse_yunduanxin',
     }
+
+    fields_mapping = {
+        '电话号码': 'sender',
+        '发送日期': 'send_time',
+        '短信内容': 'message',
+    }
+
+    database_column_list = ['mobile_phone_number', 'message', 'sender', 'send_time', 'timestamp']
 
     rules = (
         Rule(LinkExtractor(allow=r'www\.pdflibr\.com/\?page=\d+', allow_domains='www.pdflibr.com'),
@@ -99,7 +119,7 @@ class MobilePhoneCaptcha(CrawlSpider):
             if not _ph_num:
                 continue
             url = response.urljoin(href)
-            self.phone_number_and_url_mapping[_ph_num] = url
+            self.url_and_phone_number_mapping[url] = _ph_num
 
     def parse_detail(self, response):
         host_name = urlparse(response.url).hostname
@@ -116,18 +136,40 @@ class MobilePhoneCaptcha(CrawlSpider):
     def parse_pdflibr(self, response):
         table = response.xpath('(//table[@class="table table-hover"])[last()]')
         table_headers = [xpath_text_no_spaces(th) for th in table.xpath('.//th')]
+        mobile_phone_number = self.url_and_phone_number_mapping[response.url]
         for tr in table.xpath('tbody//tr'):
-            values = [xpath_extract_all_text_strip(td) for td in tr.xpath('.//td')]
-            print(dict(zip(table_headers[1:], values[1:])))
-        yield
+            try:
+                item = ParsedItem()
+                values = [xpath_extract_all_text_strip(td) for td in tr.xpath('.//td')]
+                a_dict = dict(zip(table_headers[1:], values[1:]))
+                a_dict['mobile_phone_number'] = mobile_phone_number
+                a_dict['timestamp'] = int(str_2_seconds(a_dict['发送日期']))
+                item['_parsed_data'] = self.assemble_result(a_dict)
+                yield item
+            except Exception:
+                self.logger.warning(f'fail to parse tr: {tr.extract()}')
 
     def parse_yunduanxin(self, response):
         item_xpath = '//div[contains(@class, "row border-bottom table-hover")]'
         headers = ['电话号码', '发送日期', '短信内容']
+        mobile_phone_number = self.url_and_phone_number_mapping[response.url]
         for div in response.xpath(item_xpath):
-            item = ParsedItem()
-            values = [xpath_extract_all_text_strip(_div) for _div in div.xpath('./div')]
-            from_where = values[0]
-            values[0] = from_where[:from_where.find('From')].strip()
-            item['_parsed_data'] = dict(zip(headers, values))
-            yield item
+            try:
+                item = ParsedItem()
+                values = [xpath_extract_all_text_strip(_div) for _div in div.xpath('./div')]
+                from_where = values[0]
+                values[0] = from_where[:from_where.find('From')].strip()
+                a_dict = dict(zip(headers, values))
+                a_dict['mobile_phone_number'] = mobile_phone_number
+                a_dict['timestamp'] = int(time.time())  # TODO 发送日期 to timestamp
+                item['_parsed_data'] = self.assemble_result(a_dict)
+                yield item
+            except Exception:
+                self.logger.warning(f'fail to parse div: {div.extract()}')
+
+    def assemble_result(self, a_dict):
+        a_dict = map_fields(a_dict, self.fields_mapping)
+        result_dict = OrderedDict()
+        for col in self.database_column_list:
+            result_dict[col] = a_dict[col]
+        return result_dict

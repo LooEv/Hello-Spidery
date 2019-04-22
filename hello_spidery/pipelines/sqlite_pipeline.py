@@ -37,6 +37,7 @@ class SqlitePipeline:
         )
 
     def open_spider(self, spider):
+        Path(self.database).parent.mkdir(exist_ok=True)
         self.conn = sqlite3.connect(self.database, timeout=self.timeout)
         self.cursor = self.conn.cursor()
         self.cursor.execute(self.create_db_sql)
@@ -48,8 +49,8 @@ class SqlitePipeline:
     def process_item(self, item, spider):
         save_data_list = []
         for mbr in item['data']:
-            parsed_data = mbr['_parsed_data']
-            save_data_list.append((parsed_data['电话号码'], parsed_data['发送日期'], parsed_data['短信内容']))
+            # mbr['_parsed_data'] is a OrderedDict
+            save_data_list.append(list(mbr['_parsed_data'].values()))
             if len(save_data_list) > 60:
                 self.cursor.executemany(self.insert_sql, save_data_list)
                 self.conn.commit()
@@ -57,4 +58,5 @@ class SqlitePipeline:
         if save_data_list:
             self.cursor.executemany(self.insert_sql, save_data_list)
             self.conn.commit()
+            save_data_list.clear()
         return item
