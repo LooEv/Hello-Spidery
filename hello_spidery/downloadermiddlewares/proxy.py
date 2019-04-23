@@ -11,13 +11,21 @@
 """
 
 from scrapy.downloadermiddlewares.httpproxy import HttpProxyMiddleware
+from scrapy.exceptions import NotConfigured
 
 from hello_spidery.utils.proxy import ProxyManager
 
 
 class CustomHttpProxyMiddleware(HttpProxyMiddleware):
-    def __init__(self, auth_encoding='latin-1'):
+    def __init__(self, proxy_manager_config, auth_encoding='latin-1'):
         super().__init__(auth_encoding)
-        self.proxy_mgr = ProxyManager()
+        self.proxy_mgr = ProxyManager.from_config(proxy_manager_config)
 
+    @classmethod
+    def from_crawler(cls, crawler):
+        if not crawler.settings.getbool('HTTPPROXY_ENABLED'):
+            raise NotConfigured
+        auth_encoding = crawler.settings.get('HTTPPROXY_AUTH_ENCODING')
+        proxy_manager_config = crawler.settings.get('PROXY_MANAGER_CONFIG')
+        return cls(proxy_manager_config, auth_encoding)
     # TODO  request meta change_proxy
