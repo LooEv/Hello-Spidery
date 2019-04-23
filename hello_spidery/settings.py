@@ -96,6 +96,7 @@ DOWNLOADER_MIDDLEWARES = {
     'hello_spidery.downloadermiddlewares.add_cookie.GiveSomeCookies': 580,
     # must before RedirectMiddleware and after HttpCompressionMiddleware
     'hello_spidery.downloadermiddlewares.keyword_filter.KeywordFilterMiddleware': 585,
+    # 'hello_spidery.downloadermiddlewares.proxy.CustomHttpProxyMiddleware': 720,
 }
 
 # Enable or disable extensions

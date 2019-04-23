@@ -11,6 +11,9 @@
 """
 
 import attr
+import requests
+
+from random import choice
 
 from hello_spidery.utils.commons import seconds_2_str
 
@@ -18,7 +21,7 @@ from hello_spidery.utils.commons import seconds_2_str
 @attr.s
 class Proxy:
     ip = attr.ib()
-    port = attr.ib(validator=int)
+    port = attr.ib()
     create_time = attr.ib()
     state = attr.ib(default=200)
     user = attr.ib(default=None)
@@ -29,9 +32,9 @@ class Proxy:
     @property
     def proxy(self):
         if self.user:
-            return f'{self.user}:{self.pwd}@{self.ip}:{self.port}'
+            return f'http://{self.user}:{self.pwd}@{self.ip}:{self.port}'
         else:
-            return f'{self.ip}:{self.port}'
+            return f'http://{self.ip}:{self.port}'
 
 
 class ProxyManager:
@@ -41,9 +44,31 @@ class ProxyManager:
         self._proxy_pool = {}
 
     def get_proxy(self):
-        pass
+        if self._proxy_pool:
+            proxy = self._choice_proxy()
+            if proxy:
+                return proxy
 
-    def update_proxy(self, ip, last_state_code=200):
+        while 1:
+            try:
+                response = requests.get(self._proxy_server_url)
+                for proxy_dict in response.json():
+                    proxy = self.make_data_2_proxy(proxy_dict)
+                    self._proxy_pool[proxy.ip] = proxy
+                if len(self._proxy_pool) >= self._proxy_pool_size:
+                    proxy = self._choice_proxy()
+                    return proxy
+            except Exception:
+                pass
+
+    def _choice_proxy(self):
+        # TODO add some schedule logic
+        return self._proxy_pool[choice(list(self._proxy_pool.keys()))]
+
+    def update_proxy_pool(self, ip, last_state_code=200, remove_ip=False):
+        if remove_ip:
+            self._proxy_pool.pop(ip, None)
+            return
         if ip in self._proxy_pool:
             proxy = self._proxy_pool[ip]
             proxy.state = last_state_code
@@ -57,7 +82,7 @@ class ProxyManager:
 
     @staticmethod
     def make_data_2_proxy(data):
-        ip, port = data.split(':')
+        ip, port = data['host'], data['port']
         proxy = Proxy(ip, port, create_time=seconds_2_str())
         return proxy
 
