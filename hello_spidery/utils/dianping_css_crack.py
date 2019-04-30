@@ -46,14 +46,26 @@ class DianPingCssCracker:
     def get_svg_url(self, css_url):
         try:
             resp = requests.get(css_url, headers=self.header)
-            for cls, x, y in self.class_attr_match.findall(resp.text):
-                a_tuple = (cls, int(float(x)), int(float(y)))
-                self.cls_prefix_px_mapping_dict.setdefault(cls[:3], []).append(a_tuple)
-
+            class_prefix_list = []
+            svg_url_set = set()
             for class_prefix, svg_url in self.svg_url_match.findall(resp.text):
                 svg_url = urljoin(self.shop_url, svg_url)
+                class_prefix_list.append(class_prefix)
                 self.cls_prefix_svg_mapping_dict[class_prefix] = svg_url
-                yield svg_url
+                svg_url_set.add(svg_url)
+
+            for cls, x, y in self.class_attr_match.findall(resp.text):
+                a_tuple = (cls, int(float(x)), int(float(y)))
+                if cls[:1] in class_prefix_list:
+                    class_prefix = cls[:1]
+                elif cls[:2] in class_prefix_list:
+                    class_prefix = cls[:2]
+                elif cls[:3] in class_prefix_list:
+                    class_prefix = cls[:3]
+                else:
+                    class_prefix = cls[:4]
+                self.cls_prefix_px_mapping_dict.setdefault(class_prefix, []).append(a_tuple)
+            return svg_url_set
         except Exception:
             # self.logger.exception('fail to get svg url: ')
             traceback.print_exc()
@@ -129,11 +141,3 @@ class DianPingCssCracker:
                 cls_text_mapping_dict.update(dict(cls_text_list))
             self.cls_text_mapping_dict[css_url] = cls_text_mapping_dict
         return self.replace_raw_html(css_url)
-
-
-if __name__ == '__main__':
-    html = ''
-    dp = DianPingCssCracker()
-    new_html = dp.crack(raw_html=html)
-    resp = Selector(text=new_html)
-    print(''.join(resp.xpath('//text()').extract()))

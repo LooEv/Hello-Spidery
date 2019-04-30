@@ -84,6 +84,7 @@ class DianPingShop(Spider):
         'tg_vg': '405214400'
     }
 
+    shop_id_set = set()
     post_data = {
         "pageEnName": "shopList",
         "moduleInfoList": [{"moduleName": "mapiSearch", "query": {"search": {"start": 20, "categoryId": "10",
@@ -91,13 +92,18 @@ class DianPingShop(Spider):
                             "range": "-1", "maptype": 0, "keyword": ""}}}]}
 
     def start_requests(self):
-        yield Request('https://m.dianping.com/', headers=self.header_home, dont_filter=True)
+        # yield Request('https://m.dianping.com/', headers=self.header_home, dont_filter=True)
+        url = 'https://m.dianping.com/isoapi/module'
+        form_data = copy.deepcopy(self.post_data)
+        # 变换 categoryId  cityId regionId start 以抓取更多数据
+        form_data['moduleInfoList'][0]['query']['search']['keyword'] = '烤肉'
+        form_data = json.dumps(form_data)
+        yield Request(url, method='POST', headers=self.header_json, callback=self.parse_list, body=form_data)
 
-    def parse(self, response):
+    def get_detail_shop(self, response):
         ck = copy.deepcopy(self.cookie_dict)
         ck['_hc.v'] = f'99569c40-c179-176f-e8fa-85bda8642a7e.{int(time.time())}'
-        yield Request('https://m.dianping.com/shop/124991284', callback=self.get_css,
-                      cookies=ck)
+        yield Request('https://m.dianping.com/shop/124991284', callback=self.get_css, cookies=ck)
 
     def get_css(self, response):
         if 'verify.meituan.com' in response.url:
@@ -105,15 +111,25 @@ class DianPingShop(Spider):
 
         new_html = self.dp_cracker.crack(response.text)
         slt = Selector(text=new_html)
-        print(''.join(slt.xpath('//text()').extract))
+        print(''.join(slt.xpath('//text()').extract()))
+        if self.shop_id_set:
+            shop_id = self.shop_id_set.pop()
+            ck = copy.deepcopy(self.cookie_dict)
+            ck['_hc.v'] = f'99569c40-c179-176f-e8fa-85bda8642a7e.{int(time.time())}'
+            yield Request(f'https://m.dianping.com/shop/{shop_id}', callback=self.get_css, cookies=ck)
 
     def update_cookies(self):
         # return Request()
         pass
 
     def parse_list(self, response):
-        url = 'https://m.dianping.com/isoapi/module'
         data_dict = json.loads(response.text)
-        for item in data_dict.json()['data']['moduleInfoList'][0]['moduleData']['data']['listData']['list']:
+        for item in data_dict['data']['moduleInfoList'][0]['moduleData']['data']['listData']['list']:
             shop_id = item['shopId']
-            # detail_resp = s.get(f'https://m.dianping.com/shop/{shop_id}', headers=header_home)
+            self.shop_id_set.add(shop_id)
+        if not self.shop_id_set:
+            return
+        shop_id = self.shop_id_set.pop()
+        ck = copy.deepcopy(self.cookie_dict)
+        ck['_hc.v'] = f'99569c40-c179-176f-e8fa-85bda8642a7e.{int(time.time())}'
+        yield Request(f'https://m.dianping.com/shop/{shop_id}', callback=self.get_css, cookies=ck)
