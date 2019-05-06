@@ -21,7 +21,9 @@ NEWSPIDER_MODULE = 'hello_spidery.spiders'
 # Obey robots.txt rules
 ROBOTSTXT_OBEY = False
 
-RETRY_TIMES = 2
+RETRY_TIMES = 20
+
+DOWNLOAD_TIMEOUT = 30
 
 # Configure maximum concurrent requests performed by Scrapy (default: 16)
 #CONCURRENT_REQUESTS = 32

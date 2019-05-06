@@ -47,25 +47,23 @@ class ProxyManager:
         self._proxy_pool = {}
 
     def get_proxy(self):
-        if self._proxy_pool:
+        while 1:
             proxy = self._choice_proxy()
             if proxy:
                 return proxy
-
-        while 1:
-            try:
-                response = requests.get(self._proxy_server_url)
-                for proxy_dict in response.json():
-                    proxy = self.make_data_2_proxy(proxy_dict)
-                    self._proxy_pool[proxy.ip] = proxy
-                if len(self._proxy_pool) >= self._proxy_pool_size:
-                    proxy = self._choice_proxy()
-                    return proxy
-            except Exception:
-                pass
+            if len(self._proxy_pool) < self._proxy_pool_size:
+                try:
+                    response = requests.get(self._proxy_server_url)
+                    for proxy_dict in response.json():
+                        proxy = self.make_data_2_proxy(proxy_dict)
+                        self._proxy_pool[proxy.ip] = proxy
+                except Exception:
+                    pass
 
     def _choice_proxy(self):
-        sorted_proxy = sorted(list(self._proxy_pool.values()), key=itemgetter('used_times'))
+        if not self._proxy_pool:
+            return None
+        sorted_proxy = sorted(list(self._proxy_pool.values()), key=lambda x: x.used_times)
         for proxy in sorted_proxy:
             if proxy.state != 200 or proxy.used_times >= self._max_used_times:
                 self._proxy_pool.pop(proxy.ip, None)
