@@ -12,9 +12,13 @@
 
 import re
 import time
+
+import maya
+
 from collections import OrderedDict
 from urllib.parse import urlparse
 
+from scrapy.http import Request
 from scrapy.spiders import Rule
 from scrapy.linkextractors import LinkExtractor
 
@@ -23,6 +27,8 @@ from hello_spidery.utils.spiders.crawl_spider import HelloCrawlSpider
 from hello_spidery.utils.selector_utils import xpath_extract_all_text_strip, \
     xpath_extract_all_text_no_spaces as xpath_text_no_spaces
 
+LOCAL_TIMEZONE = str(maya.get_localzone())
+
 
 class MobilePhoneSpider(HelloCrawlSpider):
     name = 'mobile_phone'
@@ -30,6 +36,7 @@ class MobilePhoneSpider(HelloCrawlSpider):
     custom_settings = {
         'USE_DEFAULT_ERROR_BACK': True,
         'DOWNLOAD_DELAY': 1,
+        'USE_PROXY': True,
 
         # DATABASE
         'SQLITE_DATABASE': '',
@@ -42,11 +49,11 @@ class MobilePhoneSpider(HelloCrawlSpider):
     }
 
     start_urls = [
-        # 'https://www.pdflibr.com/?page=1',
-        # 'https://yunduanxin.net/China-Phone-Number/',
+        'https://www.pdflibr.com/?page=1',
+        'https://yunduanxin.net/China-Phone-Number/',
         # 'http://www.smszk.com/',
         # 'http://www.z-sms.com/',
-        'https://www.becmd.com/',
+        # 'https://www.becmd.com/',
         # 'https://www.receivingsms.com/'
     ]
 
@@ -92,6 +99,11 @@ class MobilePhoneSpider(HelloCrawlSpider):
              callback='parse_list', follow=True),
     )
 
+    parse_detail_page_method = {
+        'www.pdflibr.com': 'parse_pdflibr',
+        'yunduanxin.net': 'parse_yunduanxin',
+    }
+
     def get_ph_num(self, ph_num_text):
         _ph_num = self.phone_num_match.search(ph_num_text)
         if not _ph_num:
@@ -122,15 +134,77 @@ class MobilePhoneSpider(HelloCrawlSpider):
             url = response.urljoin(href)
             if url not in self.url_and_phone_number_mapping:
                 self.url_and_phone_number_mapping[url] = _ph_num
+                yield Request(url, callback=self.parse_detail)
+
+    def parse_detail(self, response):
+        host_name = urlparse(response.url).hostname
+        parse_method_name = self.parse_detail_page_method.get(host_name)
+        if not parse_method_name:
+            self.logger.warn(f'wrong url request {response.url}')
+            return
+
+        parse_method = getattr(self, parse_method_name, None)
+        if callable(parse_method):
+            for item in parse_method(response):
+                yield item
+
+    def parse_pdflibr(self, response):
+        table = response.xpath('(//table[@class="table table-hover"])[last()]')
+        table_headers = [xpath_text_no_spaces(th) for th in table.xpath('.//th')]
+        mobile_phone_number = self.url_and_phone_number_mapping[response.url]
+        trs = table.xpath('tbody//tr')
+        if not trs:
+            self.logger.warning(f"invalid phone number url: {response.url}")
+            return
+        try:
+            values = [xpath_extract_all_text_strip(td) for td in trs[0].xpath('.//td')]
+            a_dict = dict(zip(table_headers[1:], values[1:]))
+            msg_received_time = maya.when(a_dict['发送日期'], timezone=LOCAL_TIMEZONE).epoch
+            now_timestamp = maya.now().epoch
+            if now_timestamp - msg_received_time > 2 * 60 * 60:
+                self.logger.warning(f"nobody use phone number url: {response.url}")
+            else:
                 item = self.assemble_parsed_item(response)
                 a_dict = {
-                    'mobile_phone_number': _ph_num,
-                    'url': url,
+                    'mobile_phone_number': mobile_phone_number,
+                    'url': response.url,
                     'crawl_time': seconds_2_str(),
                     'timestamp': int(time.time()),
                 }
                 item['_parsed_data'] = self.assemble_result(a_dict)
                 yield item
+        except Exception:
+            self.logger.warning(f'fail to parse url: {response.url}')
+
+    def parse_yunduanxin(self, response):
+        item_xpath = '//div[contains(@class, "row border-bottom table-hover")]'
+        headers = ['电话号码', '发送日期', '短信内容']
+        mobile_phone_number = self.url_and_phone_number_mapping[response.url]
+        divs = response.xpath(item_xpath)
+        if not divs:
+            self.logger.warning(f"invalid phone number url: {response.url}")
+            return
+        try:
+            values = [xpath_extract_all_text_strip(_div) for _div in divs[0].xpath('./div')]
+            from_where = values[0]
+            values[0] = from_where[:from_where.find('From')].strip()
+            a_dict = dict(zip(headers, values))
+            msg_received_time = maya.when(a_dict['发送日期'], timezone=LOCAL_TIMEZONE).epoch
+            now_timestamp = maya.now().epoch
+            if now_timestamp - msg_received_time > 2 * 60 * 60:
+                self.logger.warning(f"nobody use phone number url: {response.url}")
+            else:
+                item = self.assemble_parsed_item(response)
+                a_dict = {
+                    'mobile_phone_number': mobile_phone_number,
+                    'url': response.url,
+                    'crawl_time': seconds_2_str(),
+                    'timestamp': int(time.time()),
+                }
+                item['_parsed_data'] = self.assemble_result(a_dict)
+                yield item
+        except Exception:
+            self.logger.warning(f'fail to parse url: {response.url}')
 
     def assemble_result(self, a_dict):
         result_dict = OrderedDict()

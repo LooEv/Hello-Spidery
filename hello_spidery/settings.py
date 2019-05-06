@@ -94,9 +94,9 @@ DOWNLOADER_MIDDLEWARES = {
     'hello_spidery.downloadermiddlewares.default_error_back.DefaultErrorBack': 1,
     'hello_spidery.downloadermiddlewares.useragent.CustomUserAgentMiddleware': 500,
     'hello_spidery.downloadermiddlewares.add_cookie.GiveSomeCookies': 580,
-    # must before RedirectMiddleware and after HttpCompressionMiddleware
+    # must after RedirectMiddleware and HttpCompressionMiddleware
     'hello_spidery.downloadermiddlewares.keyword_filter.KeywordFilterMiddleware': 585,
-    # 'hello_spidery.downloadermiddlewares.proxy.CustomHttpProxyMiddleware': 720,
+    'hello_spidery.downloadermiddlewares.proxy.CustomHttpProxyMiddleware': 720,
 }
 
 # Enable or disable extensions
@@ -111,7 +111,7 @@ ITEM_PIPELINES = {
     # 'hello_spidery.pipelines.mongo_pipeline.MongoPipeline': 800,
     # 'hello_spidery.pipelines.duplicates_pipeline.DuplicatesPipeline': 300,
     # 'hello_spidery.pipelines.field_checker.FieldCheckerPipeline': 400,
-    'hello_spidery.pipelines.sqlite_pipeline.SqlitePipeline': 500,
+    # 'hello_spidery.pipelines.sqlite_pipeline.SqlitePipeline': 500,
     # 'hello_spidery.pipelines.parsed_data_pipeline.ParsedDataPipeline': 600,
 }
 

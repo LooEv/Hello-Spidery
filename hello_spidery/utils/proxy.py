@@ -13,7 +13,7 @@
 import attr
 import requests
 
-from random import choice
+from operator import itemgetter
 
 from hello_spidery.utils.commons import seconds_2_str
 
@@ -28,19 +28,22 @@ class Proxy:
     pwd = attr.ib(default=None)
     used_times = attr.ib(default=0)
     expired_time = attr.ib(default=None)
+    protocol = attr.ib(default='http')
 
     @property
     def proxy(self):
         if self.user:
-            return f'http://{self.user}:{self.pwd}@{self.ip}:{self.port}'
+            return f'{self.protocol}://{self.user}:{self.pwd}@{self.ip}:{self.port}'
         else:
-            return f'http://{self.ip}:{self.port}'
+            return f'{self.protocol}://{self.ip}:{self.port}'
 
 
 class ProxyManager:
     def __init__(self, config: dict):
         self._proxy_server_url = config['proxy_server_url']
         self._proxy_pool_size = config.get('proxy_pool_size', 10)
+        self._proxy_protocol = config.get('proxy_protocol', 'http')
+        self._max_used_times = config.get('max_used_times', 10)
         self._proxy_pool = {}
 
     def get_proxy(self):
@@ -62,8 +65,12 @@ class ProxyManager:
                 pass
 
     def _choice_proxy(self):
-        # TODO add some schedule logic
-        return self._proxy_pool[choice(list(self._proxy_pool.keys()))]
+        sorted_proxy = sorted(list(self._proxy_pool.values()), key=itemgetter('used_times'))
+        for proxy in sorted_proxy:
+            if proxy.state != 200 or proxy.used_times >= self._max_used_times:
+                self._proxy_pool.pop(proxy.ip, None)
+            else:
+                return proxy
 
     def update_proxy_pool(self, ip, last_state_code=200, remove_ip=False):
         if remove_ip:
@@ -80,10 +87,9 @@ class ProxyManager:
     def _prepare_request_data(self):
         pass
 
-    @staticmethod
-    def make_data_2_proxy(data):
+    def make_data_2_proxy(self, data):
         ip, port = data['host'], data['port']
-        proxy = Proxy(ip, port, create_time=seconds_2_str())
+        proxy = Proxy(ip, port, create_time=seconds_2_str(), protocol=self._proxy_protocol)
         return proxy
 
     @classmethod
