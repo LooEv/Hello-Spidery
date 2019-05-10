@@ -1,3 +1,7 @@
+spiders
+-------------------
+1. mobile_phone_spider.py: 抓取了几个提供免费接收手机验证码的网站,获取有效的手机号码,启动tornado_app/captcha_app.py,使用[server酱](http://sc.ftqq.com/3.version)的上行命令功能,在微信server酱公众号中使用语音,说出"注册xxx",就会发送一个手机号码供你注册某个服务,当你点击了获取验证码之后,大约一到两分钟微信就会收到相关验证码
+
 downloader_middleware
 -------------------
 1. 为每个request增加默认的error_back,如果它没有error_back 的话,这样就可以减少代码量
