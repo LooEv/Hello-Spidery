@@ -13,6 +13,7 @@ selenium = "*"
 pycrypto = "*"
 requests = "*"
 faker = "*"
+tornado = "*"
 maya = "*"
 
 [requires]

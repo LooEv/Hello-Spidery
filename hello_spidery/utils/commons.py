@@ -10,8 +10,9 @@
 @Desc    : 
 """
 
-import time
 import hashlib
+import re
+import time
 
 
 def calc_str_md5(strings: str, encoding='utf-8'):
@@ -39,3 +40,30 @@ def map_fields(original_dict, fields_mapping_dict):
     for key, value in original_dict.items():
         temp_dict[fields_mapping_dict.get(key, key)] = value
     return temp_dict
+
+
+def cookie_str_2_dict(text: str):
+    """
+    you can copy cookie string from browser and parse it to a dict
+    :param text:
+    :return:
+    """
+    if not text.endswith(';'):
+        text += ';'
+    result = re.findall(r'(.+?)=(.*?);\s?', text)
+    return dict(result)
+
+
+def header_str_2_dict(text: str):
+    """
+    you can copy headers string from browser and parse it to a dict
+    :param text:
+    :return:
+    """
+    header = {}
+    for line in text.splitlines():
+        if not line.strip():
+            continue
+        key, value = line.split(':', 1)
+        header[key.strip()] = value.strip()
+    return header
