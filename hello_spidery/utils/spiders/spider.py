@@ -18,6 +18,7 @@ from hello_spidery.utils.commons import calc_str_md5, seconds_2_str
 
 
 class HelloBaseSpider(Spider):
+    name = 'hello_base_spider'
     data_version = 'v1.0'
 
     def assemble_parsed_item(self, response, _id=None):

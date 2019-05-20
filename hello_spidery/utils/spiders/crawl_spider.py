@@ -15,4 +15,4 @@ from hello_spidery.utils.spiders.spider import HelloBaseSpider
 
 
 class HelloCrawlSpider(HelloBaseSpider, CrawlSpider):
-    pass
+    name = 'hello_crawl_spider'
