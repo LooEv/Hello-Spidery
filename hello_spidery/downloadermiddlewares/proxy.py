@@ -31,15 +31,19 @@ class CustomHttpProxyMiddleware:
                                   ConnectionLost, TCPTimedOutError, ResponseFailed,
                                   IOError, TunnelError)
 
-    def __init__(self, proxy_manager_config):
-        self.proxy_mgr = ProxyManager.from_config(proxy_manager_config)
+    def __init__(self, use_proxy=False, proxy_manager_config=None):
+        if use_proxy and proxy_manager_config is not None:
+            self.proxy_mgr = ProxyManager.from_config(proxy_manager_config)
+        else:
+            self.proxy_mgr = None
 
     @classmethod
     def from_crawler(cls, crawler):
         if not crawler.settings.getbool('HTTPPROXY_ENABLED'):
             raise NotConfigured
-        proxy_manager_config = crawler.settings.get('PROXY_MANAGER_CONFIG')
-        return cls(proxy_manager_config)
+        proxy_manager_config = crawler.settings.getdict('PROXY_MANAGER_CONFIG')
+        use_proxy = crawler.settings.getbool('USE_PROXY')
+        return cls(use_proxy, proxy_manager_config)
 
     def change_proxy(self, request, spider):
         proxy = self.proxy_mgr.get_proxy()
@@ -55,7 +59,7 @@ class CustomHttpProxyMiddleware:
 
     def process_exception(self, request, exception, spider):
         if isinstance(exception, self.EXCEPTIONS_TO_CHANGE_PROXY):
-            dont_retry = request.meta.get('dont_retry', False)
+            dont_retry = request.meta.getbool('dont_retry')
             use_proxy = spider.settings.getbool('USE_PROXY')
             if not dont_retry and use_proxy:
                 # 808: proxy connect error

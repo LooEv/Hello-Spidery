@@ -15,6 +15,7 @@ requests = "*"
 faker = "*"
 tornado = "*"
 maya = "*"
+sqlalchemy = "*"
 
 [requires]
 python_version = "3.6"
