@@ -135,26 +135,28 @@ def xpath_extract(slt, xpath):
     return slt.xpath(xpath).extract()
 
 
-def xpath_extract_all_text(slt, xpath='.'):
+def xpath_extract_all_text(slt, xpath='.', join_with=''):
     """
     Join all text from scrapy Selector by xpath
 
     :param slt: an instance of =scrapy.selector.Selector=
     :param xpath: a string of xpath syntax without '//text()'
+    :param join_with: a string of join all the extracted text
     :returns: a string of all nodes' text
     """
-    return ''.join(slt.xpath(xpath + '//text()').extract())
+    return join_with.join(slt.xpath(xpath + '//text()').extract())
 
 
-def xpath_extract_all_text_strip(slt, xpath='.'):
+def xpath_extract_all_text_strip(slt, xpath='.', join_with=''):
     """
     Join all text from scrapy Selector by xpath and strip it
 
     :param slt: an instance of =scrapy.selector.Selector=
     :param xpath: a string of xpath syntax without '//text()'
+    :param join_with: a string of join all the extracted text
     :returns: a string of all nodes' text
     """
-    return xpath_extract_all_text(slt, xpath).strip()
+    return xpath_extract_all_text(slt, xpath, join_with=join_with).strip()
 
 
 def xpath_extract_all_text_no_spaces(slt, xpath='.'):

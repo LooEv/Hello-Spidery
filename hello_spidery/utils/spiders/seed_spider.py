@@ -21,8 +21,8 @@ from hello_spidery.utils.seed_provider import SeedProvider
 class HelloSeedSpider(HelloBaseSpider):
     name = 'hello_seed_spider'
 
-    def __init__(self, settings, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def custom_init_from_crawler(self, crawler, *args, **kwargs):
+        settings = crawler.settings
         seed_provider_config = settings.getdict('SEED_PROVIDER_CONFIG')
         seed_provider_config['seed_queue_name'] = self.name
         self.seed_provider = SeedProvider.from_config(**seed_provider_config)
@@ -31,13 +31,7 @@ class HelloSeedSpider(HelloBaseSpider):
         self.spider_idle_times = 0
         self.close_reason = f'Close spider after {self.close_spider_after_idle_times} ' \
             f'times of spider idle'
-
-    @classmethod
-    def from_crawler(cls, crawler, *args, **kwargs):
-        spider = cls(crawler.settings, *args, **kwargs)
-        spider._set_crawler(crawler)
-        crawler.signals.connect(spider.spider_idle, signal=scrapy.signals.spider_idle)
-        return spider
+        crawler.signals.connect(self.spider_idle, signal=scrapy.signals.spider_idle)
 
     def get_seed(self):
         try:

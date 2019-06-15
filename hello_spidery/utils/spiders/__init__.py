@@ -10,6 +10,7 @@
 @Desc    : 
 """
 
-from .spider import HelloBaseSpider
+from .spider import HelloSpider, HelloBaseSpider
 from .crawl_spider import HelloCrawlSpider
 from .seed_spider import HelloSeedSpider
+from .redis_spider import HelloRedisSpider

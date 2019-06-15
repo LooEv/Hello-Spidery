@@ -13,8 +13,7 @@
 import random
 import logging
 
-logger = logging.getLogger('faker.factory')
-logger.setLevel(logging.CRITICAL)
+logging.getLogger('faker.factory').setLevel(logging.CRITICAL)
 
 from faker import Faker
 from scrapy.downloadermiddlewares.useragent import UserAgentMiddleware

@@ -93,9 +93,12 @@ FIELDS_JSON_SCHEMA = {
 # See https://doc.scrapy.org/en/latest/topics/downloader-middleware.html
 DOWNLOADER_MIDDLEWARES = {
     'scrapy.downloadermiddlewares.useragent.UserAgentMiddleware': None,
+    'scrapy.downloadermiddlewares.retry.RetryMiddleware': None,
+
     'hello_spidery.downloadermiddlewares.default_error_back.DefaultErrorBack': 1,
     'hello_spidery.downloadermiddlewares.useragent.CustomUserAgentMiddleware': 500,
-    'hello_spidery.downloadermiddlewares.add_cookie.GiveSomeCookies': 580,
+    'hello_spidery.downloadermiddlewares.retry.CustomRetryMiddleware': 550,
+    # 'hello_spidery.downloadermiddlewares.add_cookie.GiveSomeCookies': 580,
     # must after RedirectMiddleware and HttpCompressionMiddleware
     'hello_spidery.downloadermiddlewares.keyword_filter.KeywordFilterMiddleware': 585,
     'hello_spidery.downloadermiddlewares.proxy.CustomHttpProxyMiddleware': 720,
