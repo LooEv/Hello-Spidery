@@ -34,6 +34,8 @@ class CustomHttpProxyMiddleware:
     def __init__(self, use_proxy=False, proxy_manager_config=None):
         if use_proxy and proxy_manager_config is not None:
             self.proxy_mgr = ProxyManager.from_config(proxy_manager_config)
+        elif use_proxy and proxy_manager_config is None:
+            raise ValueError('if using proxy, PROXY_MANAGER_CONFIG must provide!')
         else:
             self.proxy_mgr = None
 

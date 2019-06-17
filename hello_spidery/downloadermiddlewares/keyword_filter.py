@@ -15,7 +15,8 @@ import re
 import attr
 
 from scrapy.http import Request
-from scrapy.downloadermiddlewares.retry import RetryMiddleware
+
+from hello_spidery.downloadermiddlewares.retry import CustomRetryMiddleware
 
 
 class KeywordCheckMethodEnum:
@@ -69,7 +70,7 @@ class Keyword:
             return False, False
 
 
-class KeywordFilterMiddleware(RetryMiddleware):
+class KeywordFilterMiddleware(CustomRetryMiddleware):
 
     def __init__(self, settings):
         super().__init__(settings)
@@ -99,3 +100,7 @@ class KeywordFilterMiddleware(RetryMiddleware):
                 result.meta['change_proxy'] = change_proxy
                 return result
         return response
+
+    def process_exception(self, request, exception, spider):
+        """dont catch exception here，CustomRetryMiddleware will handle it"""
+        pass

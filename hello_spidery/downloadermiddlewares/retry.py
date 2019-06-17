@@ -12,14 +12,41 @@
 
 import logging
 
-from scrapy.downloadermiddlewares.retry import RetryMiddleware
+from scrapy.core.downloader.handlers.http11 import TunnelError
+from scrapy.exceptions import NotConfigured
 from scrapy.utils.python import global_object_name
 from scrapy.utils.response import response_status_message
+
+from twisted.internet import defer
+from twisted.internet.error import TimeoutError, DNSLookupError, \
+    ConnectionRefusedError, ConnectionDone, ConnectError, \
+    ConnectionLost, TCPTimedOutError
+from twisted.web.client import ResponseFailed
 
 logger = logging.getLogger(__name__)
 
 
-class CustomRetryMiddleware(RetryMiddleware):
+class CustomRetryMiddleware:
+    EXCEPTIONS_TO_RETRY = (defer.TimeoutError, TimeoutError, DNSLookupError,
+                           ConnectionRefusedError, ConnectionDone, ConnectError,
+                           ConnectionLost, TCPTimedOutError, ResponseFailed,
+                           IOError, TunnelError)
+
+    def __init__(self, settings):
+        if not settings.getbool('RETRY_ENABLED'):
+            raise NotConfigured
+        self.max_retry_times = settings.getint('RETRY_TIMES')
+        self.retry_http_codes = set(int(x) for x in settings.getlist('RETRY_HTTP_CODES'))
+        self.priority_adjust = settings.getint('RETRY_PRIORITY_ADJUST')
+
+    @classmethod
+    def from_crawler(cls, crawler):
+        return cls(crawler.settings)
+
+    def process_exception(self, request, exception, spider):
+        if isinstance(exception, self.EXCEPTIONS_TO_RETRY) \
+                and not request.meta.get('dont_retry', False):
+            return self._retry(request, exception, spider)
 
     def process_response(self, request, response, spider):
         if request.meta.get('dont_retry', False):
@@ -52,6 +79,7 @@ class CustomRetryMiddleware(RetryMiddleware):
                         extra={'spider': spider})
             retryreq = request.copy()
             retryreq.meta['retry_times'] = retries
+            retryreq.meta['change_proxy'] = True  # if use proxy, change proxy
             retryreq.dont_filter = True
             retryreq.priority = request.priority + self.priority_adjust
 
