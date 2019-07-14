@@ -83,10 +83,11 @@ class HelloRedisSpider(HelloBaseSpider, RedisSpider):
                     continue
                 r.meta['seed'] = data.decode()
                 yield r
+            found += 1
 
         if found == 0:
             self.spider_idle_times += 1
             self.logger.info('Get empty seed ~~~, biubiubiu')
         else:
             self.spider_idle_times = 0
-            self.logger.debug("Read %s requests from '%s'", found, self.redis_key)
+            self.logger.info("Read %s requests from '%s'", found, self.redis_key)
