@@ -41,7 +41,13 @@ class DefaultErrorBack:
             spider.default_err_back = MethodType(default_err_back, spider)
 
     def process_request(self, request, spider):
+        spider.logger.info(f'Crawling:[{request.method}]{request.url} {request.body[:50]}')
         if request.callback is None and getattr(spider, 'parse', None):
             request.callback = spider.parse
         if request.errback is None and spider.settings.getbool('USE_DEFAULT_ERROR_BACK'):
             request.errback = spider.default_err_back
+
+    def process_response(self, request, response, spider):
+        if response.status != 200:
+            spider.logger.warning(f'Get non-200 response[{response.status}]:{request.url}')
+        return response

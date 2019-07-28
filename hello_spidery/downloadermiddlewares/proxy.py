@@ -11,6 +11,7 @@
 """
 
 import re
+import logging
 
 from scrapy.exceptions import NotConfigured
 from scrapy.core.downloader.handlers.http11 import TunnelError
@@ -23,6 +24,8 @@ from twisted.web.client import ResponseFailed
 from hello_spidery.utils.proxy import ProxyManager
 
 PROXY_IP_MATCH = re.compile(r'(\d+\.\d+\.\d+\.\d+):\d+$')
+
+logger = logging.getLogger(__name__)
 
 
 class CustomHttpProxyMiddleware:
@@ -47,10 +50,10 @@ class CustomHttpProxyMiddleware:
         use_proxy = crawler.settings.getbool('USE_PROXY')
         return cls(use_proxy, proxy_manager_config)
 
-    def change_proxy(self, request, spider):
+    def change_proxy(self, request):
         proxy = self.proxy_mgr.get_proxy()
         request.meta['proxy'] = proxy.proxy
-        spider.logger.info(f'Using proxy: {proxy}')
+        logger.info(f'Using proxy: {proxy.proxy}')
         return request
 
     def update_proxy_status(self, proxy, response_state_code, remove_ip=False):
@@ -61,22 +64,25 @@ class CustomHttpProxyMiddleware:
 
     def process_exception(self, request, exception, spider):
         if isinstance(exception, self.EXCEPTIONS_TO_CHANGE_PROXY):
-            dont_retry = request.meta.getbool('dont_retry')
+            dont_retry = request.meta.get('dont_retry')
             use_proxy = spider.settings.getbool('USE_PROXY')
             if not dont_retry and use_proxy:
                 # 808: proxy connect error
-                self.update_proxy_status(request.meta.get('proxy'), 808, remove_ip=True)
-                self.change_proxy(request, spider)
+                proxy = request.meta.get('proxy')
+                logger.info(f'removing proxy: {proxy}')
+                self.update_proxy_status(proxy, 808, remove_ip=True)
 
     def process_request(self, request, spider):
         if spider.settings.getbool('USE_PROXY'):
             if request.meta.get('change_proxy') or request.meta.get('proxy') is None:
-                self.change_proxy(request, spider)
+                self.change_proxy(request)
 
     def process_response(self, request, response, spider):
-        if response.status == 200:
-            remove_ip = False
-        else:
-            remove_ip = True
-        self.update_proxy_status(request.meta.get('proxy'), response.status, remove_ip=remove_ip)
+        if spider.settings.getbool('USE_PROXY'):
+            if response.status == 200:
+                remove_ip = False
+            else:
+                remove_ip = True
+            proxy = request.meta.get('proxy')
+            self.update_proxy_status(proxy, response.status, remove_ip=remove_ip)
         return response
